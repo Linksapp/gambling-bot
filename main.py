@@ -30,6 +30,7 @@ def user_surname(message):
     db.addsurnametodb(message, surname)
     bot.send_message(message.chat.id, 'поздравляю! ты теперь официальный гость влада козлова🤩')
     main_menu(message)
+
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_start(callback: telebot.types.CallbackQuery):
     # print(callback)
@@ -43,6 +44,7 @@ def callback_start(callback: telebot.types.CallbackQuery):
         pass
     if callback.data == 'games':
         pass
+
 def addlend(message: telebot.types.Message):
     try:
         amount = int(message.text.strip())
@@ -53,4 +55,5 @@ def addlend(message: telebot.types.Message):
         bot.register_next_step_handler(message, addlend)
         return
     main_menu(message)
+    
 bot.polling()
