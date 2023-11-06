@@ -31,24 +31,40 @@ def user_surname(message: telebot.types.Message):
     main_menu(message)
 
 def check_person(message: telebot.types.Message):
-    if tuple(message.text.split()) in db.get_names(message):
-        bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
-        bot.register_next_step_handler(message, send_cash, db.get_chat_id(message.text.split()))
-    else: 
+    # print(tuple(message.text.split()[1:2]))
+    try:
+        names = db.get_names(message)
+        ind = int(message.text[1:])
+        if ind in range(len(names)):
+        # if tuple(message.text.split()) in db.get_names(message):
+            bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
+            bot.register_next_step_handler(message, send_cash, db.get_chat_id(names[ind-1]))
+        else:
+            raise ValueError
+    except ValueError:
         bot.send_message(message.chat.id, 'Проверьте корректность введённых данных!')
-        bot.send_message(message.chat.id, 'Напишите гостя, которому хотите отправить деньги! (коммисия 3%)')
+        bot.send_message(message.chat.id, 'Выберете гостя, которому хотите отправить деньги! (коммисия 3%)')
+        members = db.get_names(message)
+        members_out = ''
+        count = 1
+        for i in members:
+            members_out += f'/{count} {i[0]} {i[1]} \n'
+            count += 1
+        bot.send_message(message.chat.id, members_out)
         bot.register_next_step_handler(message, check_person)
 
 def send_cash(message: telebot.types.Message, id: int):
-    if db.check_wealth(message) == 1:
-        db.withdraw_money(message, id)
-        bot.send_message(message.chat.id, 'Деньги отправлены!')
-        main_menu(message)
-    elif db.check_wealth(message) == -1:
-        bot.send_message(message.chat.id, 'На Вашем балансе недостаточно средств!')
-        bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
-        bot.register_next_step_handler(message, send_cash, id)
-    else:
+    try:
+        if db.check_wealth(message) == 1:
+            db.withdraw_money(message, id)
+            bot.send_message(message.chat.id, 'Деньги отправлены!')
+            main_menu(message)
+        elif db.check_wealth(message) == -1:
+            bot.send_message(message.chat.id, 'На Вашем балансе недостаточно средств!')
+            bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
+            bot.register_next_step_handler(message, send_cash, id)
+        else: raise Exception
+    except:
         bot.send_message(message.chat.id, 'Введенны неверные данные!')
         bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
         bot.register_next_step_handler(message, send_cash, id)
@@ -62,9 +78,12 @@ def callback_start(callback: telebot.types.CallbackQuery):
     if callback.data == 'send_cash':
         members = db.get_names(callback.message)
         members_out = ''
+        count = 1
         for i in members:
-            members_out += f'{i[0]} {i[1]} \n'
-        bot.send_message(callback.message.chat.id, 'Напишите гостя, которому хотите отправить деньги! (коммисия 3%)')
+            members_out += f'/{count} {i[0]} {i[1]} \n'
+            count += 1
+        
+        bot.send_message(callback.message.chat.id, 'Выберете гостя, которому хотите отправить деньги! (коммисия 3%)')
         bot.send_message(callback.message.chat.id, members_out)
         bot.register_next_step_handler(callback.message, check_person)
     if callback.data == 'bar':

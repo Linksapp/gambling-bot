@@ -51,6 +51,7 @@ def get_names(message):
     id = message.chat.id
     cur.execute("SELECT name, surname FROM users WHERE chatid != ?", (id,))
     ls = cur.fetchall()
+    print(ls)
     data.commit()
     data.close()
     return ls
@@ -58,6 +59,7 @@ def get_names(message):
 def check_wealth(message):
     try:
         cash = int(message.text)
+        if cash <= 0: raise ValueError
         data = sqlite3.connect('baseddata.db')
         cur = data.cursor()
         id = message.chat.id
@@ -73,7 +75,7 @@ def check_wealth(message):
             return -1
     except ValueError:
         return 0
-    
+
 def withdraw_money(message, id):
     cash = int(message.text) 
     data = sqlite3.connect('baseddata.db')
