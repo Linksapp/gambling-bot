@@ -7,9 +7,8 @@ bot = telebot.TeleBot(token)
 
 def main_menu(message: telebot.types.Message):
     markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton('Взять деньги в долг💸💸', callback_data='lend_cash'))
     markup.row(InlineKeyboardButton('Заказать напиток🍸', callback_data='bar'))
-    markup.add(InlineKeyboardButton('Игры🎰', callback_data='games'))
+    markup.row(InlineKeyboardButton('Отправить деньги', callback_data='send_cash'))
     bot.send_message(message.chat.id, f'Ваш баланс💰: {db.get_info(message)[3]} \nВыберете действие:', reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
@@ -19,41 +18,59 @@ def start(message: telebot.types.Message):
     bot.register_next_step_handler(message, user_name)
     #main_menu(message)
 
-def user_name(message):
+def user_name(message: telebot.types.Message):
     name = message.text
     db.addnametodb(message, name)
     bot.send_message(message.chat.id, 'п-пожалуйста введи свою фамлилю🥵: ')
     bot.register_next_step_handler(message, user_surname)
 
-def user_surname(message):
+def user_surname(message: telebot.types.Message):
     surname = message.text
     db.addsurnametodb(message, surname)
-    bot.send_message(message.chat.id, 'поздравляю! ты теперь официальный гость влада козлова🤩')
+    bot.send_message(message.chat.id, 'Поздравляю! Ты теперь официальный гость Влада Козлова🤩')
     main_menu(message)
+
+def check_person(message: telebot.types.Message):
+    if tuple(message.text.split()) in db.get_names(message):
+        bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
+        bot.register_next_step_handler(message, send_cash, db.get_chat_id(message.text.split()))
+    else: 
+        bot.send_message(message.chat.id, 'Проверьте корректность введённых данных!')
+        bot.send_message(message.chat.id, 'Напишите гостя, которому хотите отправить деньги! (коммисия 3%)')
+        bot.register_next_step_handler(message, check_person)
+
+def send_cash(message: telebot.types.Message, id: int):
+    if db.check_wealth(message) == 1:
+        db.withdraw_money(message, id)
+        bot.send_message(message.chat.id, 'Деньги отправлены!')
+        main_menu(message)
+    elif db.check_wealth(message) == -1:
+        bot.send_message(message.chat.id, 'На Вашем балансе недостаточно средств!')
+        bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
+        bot.register_next_step_handler(message, send_cash, id)
+    else:
+        bot.send_message(message.chat.id, 'Введенны неверные данные!')
+        bot.send_message(message.chat.id, 'Введите сумму, которую хотите отправить! (коммисия 3%)')
+        bot.register_next_step_handler(message, send_cash, id)
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_start(callback: telebot.types.CallbackQuery):
     # print(callback)
     bot.edit_message_reply_markup(chat_id=callback.message.chat.id, message_id=callback.message.id, reply_markup=None)
     # bot.edit_message_text(text= ,chat_id=callback.message.chat.id, message_id=callback.message.id, reply_markup=)
-    bot.send_message(callback.message.chat.id, 'тест')
-    if callback.data == 'lend_cash':
-        bot.send_message(callback.message.chat.id, f'Ваш кредитный лимит: {1000 - db.get_info(callback.message)[2]} \nВведите сумму, которую хотите взять в долг:')
-        bot.register_next_step_handler(callback.message, addlend)
+    # bot.send_message(callback.message.chat.id, 'тест')
+    if callback.data == 'send_cash':
+        members = db.get_names(callback.message)
+        members_out = ''
+        for i in members:
+            members_out += f'{i[0]} {i[1]} \n'
+        bot.send_message(callback.message.chat.id, 'Напишите гостя, которому хотите отправить деньги! (коммисия 3%)')
+        bot.send_message(callback.message.chat.id, members_out)
+        bot.register_next_step_handler(callback.message, check_person)
     if callback.data == 'bar':
         pass
     if callback.data == 'games':
         pass
 
-def addlend(message: telebot.types.Message):
-    try:
-        amount = int(message.text.strip())
-        if amount < 0: raise ValueError
-        db.lend(message, amount)
-    except ValueError:
-        bot.send_message(message.chat.id, "Введено неверное число")
-        bot.register_next_step_handler(message, addlend)
-        return
-    main_menu(message)
-    
+
 bot.polling()
